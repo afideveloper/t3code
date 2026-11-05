@@ -11,6 +11,7 @@ import {
   isProviderNativeSubagentThread,
   OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import * as Schema from "effect/Schema";
 import { Atom } from "effect/reactivity";
 
@@ -530,6 +531,17 @@ export function createEnvironmentThreadShellAtoms(input: {
     }).pipe(Atom.withLabel(`environment-side-chats:${key}`));
   });
 
+  // Epoch millis, so an unchanged time compares equal across shell pushes.
+  const latestUserAuthoredMessageAtAtomFamily = Atom.family((key: string) => {
+    const ref = parseThreadKey(key);
+    return Atom.make((get) => {
+      const at = get(environmentThreadIndexAtom(ref.environmentId)).get(
+        ref.threadId,
+      )?.latestUserAuthoredMessageAt;
+      return at == null ? null : DateTime.toEpochMillis(at);
+    }).pipe(Atom.withLabel(`environment-thread-latest-user-message:${key}`));
+  });
+
   const threadShellsForProjectRefsAtomFamily = Atom.family((key: string) => {
     const projectRefs = parseProjectRefCollectionKey(key);
     let previous: ReadonlyArray<EnvironmentThreadShell> = [];
@@ -673,5 +685,7 @@ export function createEnvironmentThreadShellAtoms(input: {
     quietThreadShellAtom: (ref: ScopedThreadRef) => quietThreadShellAtomFamily(threadKey(ref)),
     childThreadInputsAtom: (ref: ScopedThreadRef) => childThreadInputsAtomFamily(threadKey(ref)),
     sideChatsAtom: (ref: ScopedThreadRef) => sideChatsAtomFamily(threadKey(ref)),
+    latestUserAuthoredMessageAtAtom: (ref: ScopedThreadRef) =>
+      latestUserAuthoredMessageAtAtomFamily(threadKey(ref)),
   };
 }

@@ -279,6 +279,11 @@ Select a server to open it in the browser panel. **Stop** ends the server's job
 and keeps the agent, the terminal, and T3 Code running. Stop needs terminal
 access to the environment and is not available on Windows.
 
+**Links** in the thread details card collects the web links you wrote in the thread,
+newest first, such as the Slack thread or ticket the work came from. On mobile they
+appear above the composer. Links the agent wrote and local addresses such as
+`localhost` are left out.
+
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
 shortcuts, such as Open in editor and project scripts. **Reset to default** brings
