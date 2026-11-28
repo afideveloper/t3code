@@ -195,6 +195,7 @@ import { useThreadTurnSubagents } from "./ThreadAgentsSheet";
 import { ComposerQueuedEditBanner } from "./ComposerQueuedEdit";
 import { useThreadQueuedCount } from "./ThreadQueueControl";
 import { ThreadGuestShareBar } from "./ThreadGuestShareBar";
+import { ThreadLinksRow } from "./ThreadLinksRow";
 import { ThreadSideChatsRow } from "./ThreadSideChatsRow";
 import type { ThreadContentPresentation } from "./threadContentPresentation";
 import { resolveThreadFeedSubmissionAnchor } from "./thread-feed-live-follow";
@@ -1534,6 +1535,12 @@ function ThreadDetailBody(props: ThreadDetailScreenProps) {
                   />
                   {props.draftMode ? null : (
                     <ThreadSideChatsRow
+                      environmentId={props.environmentId}
+                      threadId={props.selectedThread.id}
+                    />
+                  )}
+                  {props.draftMode ? null : (
+                    <ThreadLinksRow
                       environmentId={props.environmentId}
                       threadId={props.selectedThread.id}
                     />

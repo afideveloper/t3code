@@ -1,5 +1,7 @@
 import {
   ORCHESTRATION_V2_WS_METHODS,
+  type OrchestrationV2GetThreadLinksInput,
+  type ScopedThreadRef,
   type ThreadId,
   type OrchestrationGetTurnDiffResult,
 } from "@t3tools/contracts";
@@ -34,8 +36,11 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
       { readonly ignoreWhitespace?: boolean },
       OrchestrationGetTurnDiffResult
     >;
+    /** When the user last wrote in a thread; a change re-reads its links. */
+    readonly latestUserMessageAtAtom?: (thread: ScopedThreadRef) => Atom.Atom<unknown>;
   } = {},
 ) {
+  const latestUserMessageAtAtom = options.latestUserMessageAtAtom;
   const onCheckpointDiffAnswer =
     options.onCheckpointDiffAnswer === undefined
       ? {}
@@ -143,6 +148,24 @@ export function createOrchestrationEnvironmentAtoms<R, E>(
     archivedShellSnapshot: createEnvironmentRpcQueryAtomFamily(runtime, {
       label: "environment-data:orchestration:archived-shell-snapshot",
       tag: ORCHESTRATION_V2_WS_METHODS.getArchivedShellSnapshot,
+    }),
+    threadLinks: createEnvironmentRpcQueryAtomFamily(runtime, {
+      label: "environment-data:orchestration:thread-links",
+      tag: ORCHESTRATION_V2_WS_METHODS.getThreadLinks,
+      staleTimeMs: 60_000,
+      idleTtlMs: 300_000,
+      ...(latestUserMessageAtAtom === undefined
+        ? {}
+        : {
+            refreshTrigger: (target: {
+              readonly environmentId: ScopedThreadRef["environmentId"];
+              readonly input: OrchestrationV2GetThreadLinksInput;
+            }) =>
+              latestUserMessageAtAtom({
+                environmentId: target.environmentId,
+                threadId: target.input.threadId,
+              }),
+          }),
     }),
     // Read right before deleting a worktree, so never served from cache.
     worktreeThreadIds: createEnvironmentRpcQueryAtomFamily(runtime, {

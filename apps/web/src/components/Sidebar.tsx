@@ -249,6 +249,12 @@ import {
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
+import { SidebarProjectTabs } from "./sidebar/SidebarProjectTabs";
+import {
+  EMPTY_PROJECT_TABS,
+  SidebarProjectTabsState,
+  resolveProjectTabProjects,
+} from "../sidebarProjectTabs";
 import { TooltipProvider } from "./ui/tooltip";
 import { composerDraftHasUserContent, DraftId, useComposerDraftStore } from "../composerDraftStore";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
@@ -998,6 +1004,19 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const projectGroupsRef = useRef(projectGroups);
   const persistedProjectScopeKeys = useUiStateStore((store) => store.sidebarProjectScopeKeys);
   const setPersistedProjectScopeKeys = useUiStateStore((store) => store.setSidebarProjectScopeKeys);
+  const [projectTabs, setProjectTabs] = useLocalStorage(
+    "t3code:sidebar-project-tabs:v1",
+    EMPTY_PROJECT_TABS,
+    SidebarProjectTabsState,
+  );
+  const activeProjectTab = projectTabs.groups.find(
+    (group) => group.id === projectTabs.activeGroupId,
+  );
+  const clearActiveProjectTab = useStableCallback(() => {
+    setProjectTabs((state) =>
+      state.activeGroupId === null ? state : { ...state, activeGroupId: null },
+    );
+  });
   const [projectScopeMenuState, dispatchProjectScopeMenu] = useReducer(
     reduceSidebarProjectScopeMenuState,
     { open: false, query: "" },
@@ -1059,6 +1078,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   // A selection made under one scope can hold threads the next scope hides.
   const setProjectScopeKeys = (keys: readonly string[]) => {
     clearSelection();
+    clearActiveProjectTab();
     setPersistedProjectScopeKeys(keys);
   };
   // A scope whose project is gone reads as all projects once every snapshot has
@@ -1068,17 +1088,19 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const archivedProjectKeys = new Set(
     projectGroups.filter((project) => project.archived).map((project) => project.projectKey),
   );
-  const chosenProjectScopeKeys = resolveSidebarProjectScopeKeys({
-    groups: projectGroups,
-    keys: persistedProjectScopeKeys,
-    settings: projectGroupingSettings,
-    canClearMissingScope: allProjectSnapshotsReady && allProjectConfigsReady,
-  }).filter((key) => !archivedProjectKeys.has(key));
+  const chosenProjectScopeKeys = activeProjectTab
+    ? resolveProjectTabProjects(scopeGroups, activeProjectTab).map((project) => project.projectKey)
+    : resolveSidebarProjectScopeKeys({
+        groups: projectGroups,
+        keys: persistedProjectScopeKeys,
+        settings: projectGroupingSettings,
+        canClearMissingScope: allProjectSnapshotsReady && allProjectConfigsReady,
+      }).filter((key) => !archivedProjectKeys.has(key));
   const chosenProjectGroups = scopeGroups.filter((project) =>
     chosenProjectScopeKeys.includes(project.projectKey),
   );
   const chosenScopeProjectKeys =
-    chosenProjectGroups.length === 0
+    chosenProjectGroups.length === 0 && !activeProjectTab
       ? null
       : new Set(
           chosenProjectGroups.flatMap((project) =>
@@ -1116,7 +1138,12 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     findThread: (key) => threads.find((candidate) => threadShellKey(candidate) === key),
   });
   const projectScopeKeys = revealWidensScope ? [] : chosenProjectScopeKeys;
-  const projectScopeKey = projectScopeKeys.length === 0 ? null : projectScopeKeys.join("\n");
+  const projectScopeKey =
+    !revealWidensScope && activeProjectTab
+      ? `group:${activeProjectTab.id}:${projectScopeKeys.join("\n")}`
+      : projectScopeKeys.length === 0
+        ? null
+        : projectScopeKeys.join("\n");
   const toggleProjectScopeKey = (key: string) =>
     setProjectScopeKeys(
       projectScopeKeys.includes(key)
@@ -1131,8 +1158,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   useEffect(() => {
     if (!revealWidensScope) return;
     clearSelection();
+    clearActiveProjectTab();
     setPersistedProjectScopeKeys([]);
-  }, [clearSelection, revealWidensScope, setPersistedProjectScopeKeys]);
+  }, [clearSelection, clearActiveProjectTab, revealWidensScope, setPersistedProjectScopeKeys]);
   const revealActiveRow = useActiveRowReveal(routeReveal, routeRowThreadKey);
   const showProjectEnvironments = projectGroupsSpanEnvironments(projectGroups);
   const scratchMachineLabelFor = (
@@ -1169,7 +1197,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const scopedProjectRefs = scopedProjectGroups.flatMap((project) => project.memberProjectRefs);
   const scopedProjectKeys = revealWidensScope ? null : chosenScopeProjectKeys;
   const threadSearch = useThreadSearch(
-    connectedEnvironmentIds,
+    scopedProjectKeys !== null && scopedProjectKeys.size === 0 ? [] : connectedEnvironmentIds,
     threadSearchQuery,
     scopedProjectGroups.length === 0
       ? {}
@@ -1323,7 +1351,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     delegatedUnderParent,
     routeRowThreadKey,
     folderGroups: boringSidebarEnabled
-      ? scopedProjectGroups.length === 0
+      ? scopedProjectKeys === null
         ? // An archived project keeps a folder for its active threads, below the rest.
           [...scopeGroups, ...projectGroups.filter((project) => project.archived)]
         : scopedProjectGroups
@@ -3162,10 +3190,50 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               activeSearchResultIndex={activeSearchResultIndex}
               onClearSearch={clearThreadSearch}
             />
+            <SidebarProjectTabs
+              groups={projectTabs.groups}
+              activeGroupId={revealWidensScope ? null : (activeProjectTab?.id ?? null)}
+              hasProjectFilter={projectScopeKeys.length > 0}
+              projects={scopeGroups}
+              selectedProjectKeys={projectScopeKeys}
+              onSelect={(activeGroupId) => {
+                clearSelection();
+                setPersistedProjectScopeKeys([]);
+                setProjectTabs((state) => ({ ...state, activeGroupId }));
+              }}
+              onSave={(group) => {
+                clearSelection();
+                setPersistedProjectScopeKeys([]);
+                setProjectTabs((state) => ({
+                  groups: state.groups.some((candidate) => candidate.id === group.id)
+                    ? state.groups.map((candidate) =>
+                        candidate.id === group.id ? group : candidate,
+                      )
+                    : [...state.groups, group],
+                  activeGroupId: group.id,
+                }));
+              }}
+              onDelete={(id) => {
+                clearSelection();
+                setPersistedProjectScopeKeys([]);
+                setProjectTabs((state) => ({
+                  groups: state.groups.filter((group) => group.id !== id),
+                  activeGroupId: state.activeGroupId === id ? null : state.activeGroupId,
+                }));
+              }}
+            />
           </SidebarGroup>
         }
       >
         <SidebarGroup className="flex-1" role="presentation">
+          {!revealWidensScope && activeProjectTab && scopedProjectGroups.length === 0 ? (
+            <p
+              role="status"
+              className="px-3 py-6 text-center text-xs text-sidebar-muted-foreground"
+            >
+              No available projects in this group. Edit the group to add projects, or choose All.
+            </p>
+          ) : null}
           {isSearchingThreads ? (
             threadSearchResults.length > 0 ? (
               <TooltipProvider

@@ -3556,6 +3556,7 @@ export const ORCHESTRATION_V2_WS_METHODS = {
   getArchivedShellSnapshot: "orchestration.getArchivedShellSnapshot",
   getThreadFamily: "orchestration.getThreadFamily",
   getWorktreeThreadIds: "orchestration.getWorktreeThreadIds",
+  getThreadLinks: "orchestration.getThreadLinks",
   getOlderSettledThreads: "orchestration.getOlderSettledThreads",
   getThreadProjection: "orchestration.getThreadProjection",
   getWorkflowScript: "orchestration.getWorkflowScript",
@@ -3743,6 +3744,24 @@ export const OrchestrationV2WorktreeThreadIds = Schema.Struct({
   threadIds: Schema.Array(ThreadId),
 });
 export type OrchestrationV2WorktreeThreadIds = typeof OrchestrationV2WorktreeThreadIds.Type;
+
+export const OrchestrationV2GetThreadLinksInput = Schema.Struct({
+  threadId: ThreadId,
+});
+export type OrchestrationV2GetThreadLinksInput = typeof OrchestrationV2GetThreadLinksInput.Type;
+
+export const OrchestrationV2ThreadLink = Schema.Struct({
+  url: TrimmedNonEmptyString,
+  messageId: MessageId,
+  sentAt: IsoDateTime,
+});
+export type OrchestrationV2ThreadLink = typeof OrchestrationV2ThreadLink.Type;
+
+/** Web links from messages the user wrote, most recently sent first. */
+export const OrchestrationV2ThreadLinks = Schema.Struct({
+  links: Schema.Array(OrchestrationV2ThreadLink),
+});
+export type OrchestrationV2ThreadLinks = typeof OrchestrationV2ThreadLinks.Type;
 
 export const OrchestrationV2SubscribeThreadInput = Schema.Struct({
   threadId: ThreadId,
@@ -4156,6 +4175,10 @@ export const OrchestrationV2RpcSchemas = {
   getWorktreeThreadIds: {
     input: OrchestrationV2GetWorktreeThreadIdsInput,
     output: OrchestrationV2WorktreeThreadIds,
+  },
+  getThreadLinks: {
+    input: OrchestrationV2GetThreadLinksInput,
+    output: OrchestrationV2ThreadLinks,
   },
   getOlderSettledThreads: {
     input: OrchestrationV2GetOlderSettledThreadsInput,

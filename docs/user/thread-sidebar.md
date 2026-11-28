@@ -145,6 +145,17 @@ choice.
 While this is on, the active list is ordered by when each thread last came back to you, so you
 cannot drag or move threads within it. Your saved order returns when you turn it off.
 
+### Filter by a custom project group
+
+On web and desktop, choose **New project group** in the sidebar, name the group, and select
+its projects. Choose its tab to filter threads across those projects, including search,
+pinned threads, Snoozed, and Settled. A project can belong to several groups.
+
+Choose **All** to clear the filter. Use **Edit project group** on the selected group to
+rename it, change its projects, or delete it; deleting a group does not delete projects
+or threads. Groups are saved in the current browser or desktop app and do not sync to
+other devices or the native mobile app.
+
 ### Group threads by project (beta)
 
 Turn on **Settings → Labs → Boring sidebar (group by project)** on web and desktop to put active
@@ -278,6 +289,11 @@ turn ends.
 Select a server to open it in the browser panel. **Stop** ends the server's job
 and keeps the agent, the terminal, and T3 Code running. Stop needs terminal
 access to the environment and is not available on Windows.
+
+**Links** in the thread details card collects the web links you wrote in the thread,
+newest first, such as the Slack thread or ticket the work came from. On mobile they
+appear above the composer. Links the agent wrote and local addresses such as
+`localhost` are left out.
 
 To choose what the thread details card shows, right-click the card or open
 **Settings → Appearance → Thread details**. Hidden rows keep their keyboard
